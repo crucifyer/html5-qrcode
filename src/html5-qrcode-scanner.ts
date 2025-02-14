@@ -150,6 +150,7 @@ function toHtml5QrcodeCameraScanConfig(config: Html5QrcodeScannerConfig)
         fps: config.fps,
         qrbox: config.qrbox,
         aspectRatio: config.aspectRatio,
+        disableRotate: config.disableRotate,
         disableFlip: config.disableFlip,
         videoConstraints: config.videoConstraints
     };

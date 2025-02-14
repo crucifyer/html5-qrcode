@@ -162,6 +162,16 @@ export interface Html5QrcodeCameraScanConfig {
     aspectRatio?: number | undefined;
 
     /**
+     * Optional, if set to 'true', barcodes rotated -90 degrees will not be scanned.
+     * If you have performance constraints, only use this option
+     * if you are certain that the barcode will not be scanned.
+     *
+     * disableFlip and disableRotate cannot be used together.
+     * If both are false, then rotate is attempted.
+     */
+    disableRotate?: boolean | undefined;
+
+    /**
      * Optional, if `true` flipped QR Code won't be scanned. Only use this
      * if you are sure the camera cannot give mirrored feed if you are facing
      * performance constraints.
@@ -191,6 +201,7 @@ export interface Html5QrcodeCameraScanConfig {
 class InternalHtml5QrcodeConfig implements Html5QrcodeCameraScanConfig {
 
     public readonly fps: number;
+    public readonly disableRotate: boolean;
     public readonly disableFlip: boolean;
     public readonly qrbox: number | QrDimensions | QrDimensionFunction | undefined;
     public readonly aspectRatio: number | undefined;
@@ -205,11 +216,13 @@ class InternalHtml5QrcodeConfig implements Html5QrcodeCameraScanConfig {
 
         this.fps = Constants.SCAN_DEFAULT_FPS;
         if (!config) {
+            this.disableRotate = Constants.DEFAULT_DISABLE_ROTATE;
             this.disableFlip = Constants.DEFAULT_DISABLE_FLIP;
         } else {
             if (config.fps) {
                 this.fps = config.fps;
             }
+            this.disableRotate = config.disableRotate === true;
             this.disableFlip = config.disableFlip === true;
             this.qrbox = config.qrbox;
             this.aspectRatio = config.aspectRatio;
@@ -1217,17 +1230,34 @@ export class Html5Qrcode {
         // TODO(mebjas): Move this logic to decoding library.
         this.scanContext(qrCodeSuccessCallback, qrCodeErrorCallback)
             .then((isSuccessfull) => {
-                // Previous scan failed and disableFlip is off.
-                if (!isSuccessfull && internalConfig.disableFlip !== true) {
-                    this.context!.translate(this.context!.canvas.width, 0);
-                    this.context!.scale(-1, 1);
-                    this.scanContext(qrCodeSuccessCallback, qrCodeErrorCallback)
-                        .finally(() => {
-                            triggerNextScan();
-                        });
-                } else {
-                    triggerNextScan();
+                // Previous scan failed
+                if (!isSuccessfull) {
+                    // and disableRotate is off.
+                    if (internalConfig.disableRotate !== true) {
+                        const w = this.context!.canvas.width / 2, h = this.context!.canvas.height / 2;
+                        this.context!.translate(w, h);
+                        this.context!.rotate(-Math.PI/2);
+                        this.context!.drawImage(this.context!.canvas, -w, -h);
+                        this.scanContext(qrCodeSuccessCallback, qrCodeErrorCallback)
+                          .finally(() => {
+                              triggerNextScan();
+                          });
+                        return;
+                    }
+                    // and disableFlip is off.
+                    if (internalConfig.disableFlip !== true) {
+                        this.context!.translate(this.context!.canvas.width, 0);
+                        this.context!.scale(-1, 1);
+                        this.context!.drawImage(this.context!.canvas, 0, 0);
+                        this.scanContext(qrCodeSuccessCallback, qrCodeErrorCallback)
+                          .finally(() => {
+                              triggerNextScan();
+                          });
+                        return;
+                    }
+                    return;
                 }
+                triggerNextScan();
             }).catch((error) => {
                 this.logger.logError(
                     "Error happend while scanning context", error);

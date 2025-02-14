@@ -85,7 +85,8 @@ export class Html5QrcodeConstants {
     static GITHUB_PROJECT_URL: string
         = "https://github.com/mebjas/html5-qrcode";
     static SCAN_DEFAULT_FPS = 2;
-    static DEFAULT_DISABLE_FLIP = false;
+    static DEFAULT_DISABLE_ROTATE = false;
+    static DEFAULT_DISABLE_FLIP = true;
     static DEFAULT_REMEMBER_LAST_CAMERA_USED = true;
     static DEFAULT_SUPPORTED_SCAN_TYPE = [
         Html5QrcodeScanType.SCAN_TYPE_CAMERA,
